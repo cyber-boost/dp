@@ -5,8 +5,8 @@
 
 set -e
 
-DOWNLOAD_URL="https://cyberboost.com/latest/kde-dp.tar.gz"
-PACKAGE_FILE="kde-dp.tar.gz"
+DOWNLOAD_URL="http://cyberboost.com/latest/dp.tar.gz"
+PACKAGE_FILE="dpaper.tar.gz"
 
 echo "Downloading KDE Dynamic Wallpaper package..."
 echo "URL: $DOWNLOAD_URL"

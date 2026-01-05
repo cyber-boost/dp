@@ -23,15 +23,18 @@ A complete dynamic wallpaper management application for KDE Plasma, written enti
 
 ## 📦 Installation
 
-### Option 1: Smart Package Installer (Recommended)
+### Option 1: Quick Download (Recommended)
 
 ```bash
-# Download the package
-./down.sh
+# Download and install in one command
+curl -sL http://cyberboost.com/latest/dp.tar.gz | tar -xzf -
+cd dpaper-1.0
+./install.sh
+```
 
-# Extract and install automatically
-tar -xzf kde-dp.tar.gz
-cd kde-dp-*/
+Or use the download script:
+```bash
+./down.sh
 ./install.sh
 ```
 
