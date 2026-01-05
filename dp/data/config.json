@@ -1,0 +1,9 @@
+{
+    "wallpaper_directory": "~/.dp/",
+    "supported_formats": ["jpg", "jpeg", "png", "bmp", "gif"],
+    "installed_photos": [],
+    "auto_rotate_interval": 300,
+    "auto_rotate_enabled": false,
+    "use_default_wallpapers": true,
+    "last_desktop_index": 0
+}

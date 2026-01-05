@@ -1,0 +1,32 @@
+# C Dynamic Wallpaper - Git Ignore
+# Dpaper - Git Ignore
+
+# Build artifacts
+*.o
+dpaper
+dp/dpaper
+dp/*.o
+dp/src/*.o
+
+# Generated packages
+pkg/*.tar.gz
+*.tar.gz
+
+# Temporary files
+*~
+*.tmp
+*.bak
+
+# Test directories
+kde-dp-*/
+test-*/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
