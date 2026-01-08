@@ -1,0 +1,9 @@
+!GlobalState
+assets:
+  build-packages: []
+  build-snaps:
+  - core20=2686
+  - gnome-3-38-2004-sdk=171
+  - gnome-3-38-2004=143
+  - gtk-common-themes=1535
+  required-grade: stable

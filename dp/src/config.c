@@ -39,6 +39,10 @@ void config_set_defaults(Config *config) {
 
     // Default wallpapers
     config->use_default_wallpapers = TRUE;
+
+    // Boot screen settings
+    config->boot_screen_enabled = FALSE;
+    config->boot_screen_image = NULL; // NULL means random
 }
 
 // Free configuration memory
@@ -46,6 +50,7 @@ void config_free(Config *config) {
     if (!config) return;
 
     g_free(config->wallpaper_directory);
+    g_free(config->boot_screen_image);
     g_ptr_array_free(config->supported_formats, TRUE);
     g_ptr_array_free(config->installed_photos, TRUE);
     g_free(config);
@@ -107,6 +112,26 @@ gboolean config_load(Config *config, const char *filename) {
         config->use_default_wallpapers = TRUE;
     }
 
+    // Parse boot_screen_enabled (boolean)
+    if (g_strstr_len(contents, -1, "\"boot_screen_enabled\": true")) {
+        config->boot_screen_enabled = TRUE;
+    } else if (g_strstr_len(contents, -1, "\"boot_screen_enabled\": false")) {
+        config->boot_screen_enabled = FALSE;
+    }
+
+    // Parse boot_screen_image
+    char *boot_img_start = g_strstr_len(contents, -1, "\"boot_screen_image\": \"");
+    if (boot_img_start) {
+        boot_img_start += strlen("\"boot_screen_image\": \"");
+        char *boot_img_end = g_strstr_len(boot_img_start, -1, "\"");
+        if (boot_img_end) {
+            gsize boot_img_len = boot_img_end - boot_img_start;
+            char *boot_image = g_strndup(boot_img_start, boot_img_len);
+            g_free(config->boot_screen_image);
+            config->boot_screen_image = boot_image;
+        }
+    }
+
     // Parse wallpaper_directory
     char *dir_start = g_strstr_len(contents, -1, "\"wallpaper_directory\": \"");
     if (dir_start) {
@@ -161,6 +186,12 @@ gboolean config_save(const Config *config, const char *filename) {
     // Default wallpapers setting
     g_string_append_printf(json, "  \"use_default_wallpapers\": %s,\n",
                           config->use_default_wallpapers ? "true" : "false");
+
+    // Boot screen settings
+    g_string_append_printf(json, "  \"boot_screen_enabled\": %s,\n",
+                          config->boot_screen_enabled ? "true" : "false");
+    g_string_append_printf(json, "  \"boot_screen_image\": \"%s\",\n",
+                          config->boot_screen_image ? config->boot_screen_image : "");
 
     // Last desktop index
     g_string_append_printf(json, "  \"last_desktop_index\": %d\n",

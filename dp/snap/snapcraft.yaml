@@ -11,25 +11,26 @@ description: |
   - Per-desktop or all-desktops wallpaper setting
 
 confinement: strict
-base: core24
+base: core22
 
 parts:
   dpaper:
     plugin: make
     source: dp/
+    source-type: local
     build-packages:
       - build-essential
       - libgtk-3-dev
       - libayatana-appindicator3-dev
     stage-packages:
       - libgtk-3-0
-      - libayatana-appindicator3-0.1
+      - libayatana-appindicator3-1
 
 apps:
   dpaper:
     command: usr/local/bin/dpaper
     desktop: usr/share/applications/dpaper.desktop
-    extensions: [gnome-42-2204]
+    extensions: [gnome]
     plugs:
       - desktop
       - desktop-legacy

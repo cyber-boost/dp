@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Dpaper
+Comment=Dynamic wallpaper changer for Kubuntu
+Exec=dpaper
+Icon=dpaper
+Terminal=false
+Type=Application
+Categories=Utility;
+StartupNotify=true
+

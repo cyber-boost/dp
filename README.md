@@ -17,6 +17,7 @@ A complete dynamic wallpaper management application for KDE Plasma, written enti
 - **Auto-Rotate** - Configurable interval automatic changes
 - **Configuration System** - JSON-based settings with GUI editor
 - **Photo Management** - Track installed wallpapers in configuration
+- **Boot Screen Wallpaper** - Automatically set wallpaper on system startup (set or random)
 - **KDE Integration** - Native Plasma wallpaper setting using `plasma-apply-wallpaperimage` and D-Bus
 - **Smart Packaging** - Complete distribution system with installer
 - **Error-Only Notifications** - Clean UX with error dialogs only
@@ -82,6 +83,9 @@ snap install dpaper
    - **Remove Photos** - Browse and select images to remove from collection
    - **Start Auto-Rotate** - Automatic changes every 5 minutes
    - **Stop Auto-Rotate** - Stop automatic changes
+   - **Boot Screen Enabled** - Enable/disable automatic wallpaper on system startup
+   - **Set Boot Screen (Random)** - Use random wallpaper on system startup
+   - **Set Boot Screen (Selected)** - Choose specific wallpaper for system startup
    - **Use Default Wallpapers** - Toggle bundled Linux-themed wallpapers (34 images)
    - **Configure** - Open settings dialog to customize behavior
    - **About** - Show application information
@@ -99,6 +103,8 @@ The application stores settings in `~/.dp/config.json`:
   "auto_rotate_interval": 300,
   "auto_rotate_enabled": false,
   "use_default_wallpapers": true,
+  "boot_screen_enabled": false,
+  "boot_screen_image": "",
   "last_desktop_index": 0
 }
 ```
@@ -114,6 +120,11 @@ The application stores settings in `~/.dp/config.json`:
 - Automatically installed to `~/.dp/` when "Use Default Wallpapers" is enabled
 - Toggle via checkbox in tray menu
 - Can be combined with user-added photos
+
+**Boot Screen Settings**:
+- **Boot Screen Enabled**: Checkbox to enable/disable automatic wallpaper setting on system startup
+- **Boot Screen Image**: Path to specific wallpaper image (leave empty for random selection)
+- Toggle via checkbox in tray menu, set mode via "Set Boot Screen" submenu options
 
 Settings are automatically saved when you exit the application.
 
@@ -190,6 +201,7 @@ dpaper/
 - **✅ Configuration System** - JSON-based settings persistence
 - **✅ Default Wallpapers** - 34 bundled wallpapers with toggle option
 - **✅ Photo Management** - Add/remove photos with config updates
+- **✅ Boot Screen Wallpaper** - Automatic wallpaper setting on system startup
 - **Time-Based Selection** - Different wallpapers for different times
 - **Application Triggers** - Wallpapers based on running applications
 - **Multi-Monitor Support** - Individual wallpapers per monitor

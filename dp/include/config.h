@@ -12,6 +12,8 @@ typedef struct {
     gboolean auto_rotate_enabled;   // Whether auto-rotate is enabled
     int last_desktop_index;         // Last used desktop index
     gboolean use_default_wallpapers; // Whether to use bundled default wallpapers
+    gboolean boot_screen_enabled;   // Whether boot screen wallpaper is enabled
+    char *boot_screen_image;        // Specific image path for boot screen (NULL = random)
 } Config;
 
 // Configuration functions

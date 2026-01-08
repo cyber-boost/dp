@@ -60,12 +60,13 @@ rebuild: clean all
 
 # Install the application
 install: $(TARGET)
-	sudo cp $(TARGET) /usr/local/bin/
-	sudo ln -sf /usr/local/bin/$(TARGET) /usr/local/bin/dp
-	sudo mkdir -p /usr/share/icons/hicolor/48x48/apps/
-	sudo cp data/icons/dpaper.png /usr/share/icons/hicolor/48x48/apps/dpaper.png
-	sudo cp data/dpaper.desktop /usr/share/applications/
-	sudo sh -c 'mkdir -p ~$(SUDO_USER)/Desktop && cp data/dpaper.desktop ~$(SUDO_USER)/Desktop/'
+	mkdir -p $(DESTDIR)/usr/local/bin/
+	cp $(TARGET) $(DESTDIR)/usr/local/bin/
+	ln -sf $(TARGET) $(DESTDIR)/usr/local/bin/dp
+	mkdir -p $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/
+	cp data/icons/dpaper.png $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/dpaper.png
+	mkdir -p $(DESTDIR)/usr/share/applications/
+	cp data/dpaper.desktop $(DESTDIR)/usr/share/applications/
 
 # Uninstall the application
 uninstall:

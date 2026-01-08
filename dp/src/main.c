@@ -22,6 +22,7 @@
 #include <dirent.h>
 #include <time.h>
 #include <strings.h>  // For strcasecmp
+#include <glib.h>
 #include "config.h"
 
 // Global variables
@@ -55,30 +56,51 @@ static gboolean auto_rotate_timer_callback(gpointer data);
 static void start_auto_rotate(void);
 static void stop_auto_rotate(void);
 static void toggle_default_wallpapers_callback(GtkMenuItem *menuitem, gpointer userdata);
+static void toggle_boot_screen_callback(GtkMenuItem *menuitem, gpointer userdata);
+static void set_boot_screen_random_callback(GtkMenuItem *menuitem, gpointer userdata);
+static void set_boot_screen_selected_callback(GtkMenuItem *menuitem, gpointer userdata);
 
 int main(int argc, char *argv[]) {
+    // Suppress libayatana-appindicator deprecation warnings
+    g_setenv("G_DEBUG", "fatal-warnings", TRUE);
+
     // Initialize GTK
     gtk_init(&argc, &argv);
 
     // Load configuration
     app_config = config_new();
     char *config_path = config_get_config_path();
-    fprintf(stderr, "Loading config from: %s\n", config_path);
     if (!config_load(app_config, config_path)) {
-        fprintf(stderr, "Warning: Could not load configuration, using defaults\n");
-    } else {
-        fprintf(stderr, "Config loaded successfully\n");
+        // Silently use defaults if config can't be loaded
     }
-    fprintf(stderr, "Auto-rotate enabled in config: %s\n", app_config->auto_rotate_enabled ? "YES" : "NO");
     g_free(config_path);
 
-    // Restart auto-rotate if it was enabled
+    // Restart auto-rotate if it was enabled (silently)
     if (app_config->auto_rotate_enabled) {
-        fprintf(stderr, "Auto-rotate was enabled in config, restarting...\n");
         start_auto_rotate();
-    } else {
-        fprintf(stderr, "Auto-rotate not enabled in config\n");
     }
+
+    // Set boot screen wallpaper if enabled (silently)
+    if (app_config->boot_screen_enabled) {
+        if (app_config->boot_screen_image && strlen(app_config->boot_screen_image) > 0) {
+            // Use specific image
+            set_kde_wallpaper(app_config->boot_screen_image);
+        } else {
+            // Use random image
+            char *default_dir = get_default_wallpaper_directory();
+            char *random_image = get_random_image_from_directory(default_dir);
+
+            if (random_image != NULL) {
+                set_kde_wallpaper(random_image);
+                free(random_image);
+            }
+
+            free(default_dir);
+        }
+    }
+
+    // Show welcome message
+    printf("Welcome to Dynamic Wallpaper! Look for the camera icon in your system tray to select your photos.\n");
 
     // Create default directory if it doesn't exist
     create_default_directory();
@@ -179,6 +201,11 @@ AppIndicator* create_tray_icon(void) {
     GtkWidget *start_auto_rotate_item = gtk_menu_item_new_with_label("Start Auto-Rotate (5 min)");
     GtkWidget *stop_auto_rotate_item = gtk_menu_item_new_with_label("Stop Auto-Rotate");
     GtkWidget *separator3 = gtk_separator_menu_item_new();
+    GtkWidget *boot_screen_item = gtk_check_menu_item_new_with_label("Boot Screen Enabled");
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(boot_screen_item), app_config->boot_screen_enabled);
+    GtkWidget *boot_screen_random_item = gtk_menu_item_new_with_label("Set Boot Screen (Random)");
+    GtkWidget *boot_screen_selected_item = gtk_menu_item_new_with_label("Set Boot Screen (Selected)");
+    GtkWidget *separator4 = gtk_separator_menu_item_new();
     GtkWidget *default_wallpapers_item = gtk_check_menu_item_new_with_label("Use Default Wallpapers");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(default_wallpapers_item), app_config->use_default_wallpapers);
     GtkWidget *configure_item = gtk_menu_item_new_with_label("Configure");
@@ -199,6 +226,10 @@ AppIndicator* create_tray_icon(void) {
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), stop_auto_rotate_item);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), separator2);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), separator3);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), boot_screen_item);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), boot_screen_random_item);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), boot_screen_selected_item);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), separator4);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), default_wallpapers_item);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), configure_item);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), about_item);
@@ -216,6 +247,10 @@ AppIndicator* create_tray_icon(void) {
     gtk_widget_show(stop_auto_rotate_item);
     gtk_widget_show(separator2);
     gtk_widget_show(separator3);
+    gtk_widget_show(boot_screen_item);
+    gtk_widget_show(boot_screen_random_item);
+    gtk_widget_show(boot_screen_selected_item);
+    gtk_widget_show(separator4);
     gtk_widget_show(default_wallpapers_item);
     gtk_widget_show(configure_item);
     gtk_widget_show(about_item);
@@ -233,6 +268,9 @@ AppIndicator* create_tray_icon(void) {
     g_signal_connect(remove_photos_item, "activate", G_CALLBACK(remove_photos_callback), NULL);
     g_signal_connect(start_auto_rotate_item, "activate", G_CALLBACK(start_auto_rotate_callback), NULL);
     g_signal_connect(stop_auto_rotate_item, "activate", G_CALLBACK(stop_auto_rotate_callback), NULL);
+    g_signal_connect(boot_screen_item, "activate", G_CALLBACK(toggle_boot_screen_callback), NULL);
+    g_signal_connect(boot_screen_random_item, "activate", G_CALLBACK(set_boot_screen_random_callback), NULL);
+    g_signal_connect(boot_screen_selected_item, "activate", G_CALLBACK(set_boot_screen_selected_callback), NULL);
     g_signal_connect(default_wallpapers_item, "activate", G_CALLBACK(toggle_default_wallpapers_callback), NULL);
     g_signal_connect(configure_item, "activate", G_CALLBACK(configure_callback), NULL);
     g_signal_connect(about_item, "activate", G_CALLBACK(about_callback), NULL);
@@ -409,16 +447,12 @@ static void stop_auto_rotate_callback(GtkMenuItem *menuitem, gpointer userdata) 
 
 static void start_auto_rotate(void) {
     if (!app_config) {
-        fprintf(stderr, "Error: No configuration loaded\n");
         return;
     }
 
     if (app_config->auto_rotate_enabled && auto_rotate_timer_id != 0) {
-        fprintf(stderr, "Auto-rotate already running\n");
         return;
     }
-
-    fprintf(stderr, "Starting auto-rotate (interval: %d seconds)\n", app_config->auto_rotate_interval);
 
     // Set wallpaper immediately
     set_random_wallpaper_callback(NULL, NULL);
@@ -426,12 +460,10 @@ static void start_auto_rotate(void) {
     // Start the timer (interval in milliseconds)
     auto_rotate_timer_id = g_timeout_add(app_config->auto_rotate_interval * 1000, auto_rotate_timer_callback, NULL);
     if (auto_rotate_timer_id == 0) {
-        fprintf(stderr, "Error: Failed to create timer\n");
         return;
     }
 
     app_config->auto_rotate_enabled = TRUE;
-    fprintf(stderr, "Auto-rotate started successfully (timer ID: %u)\n", auto_rotate_timer_id);
 
     // Save configuration
     char *config_path = config_get_config_path();
@@ -441,16 +473,12 @@ static void start_auto_rotate(void) {
 
 static void stop_auto_rotate(void) {
     if (!app_config) {
-        printf("Error: No configuration loaded\n");
         return;
     }
 
     if (!app_config->auto_rotate_enabled) {
-        printf("Auto-rotate not running\n");
         return;
     }
-
-    printf("Stopping auto-rotate (timer ID: %u)\n", auto_rotate_timer_id);
 
     if (auto_rotate_timer_id > 0) {
         g_source_remove(auto_rotate_timer_id);
@@ -458,7 +486,6 @@ static void stop_auto_rotate(void) {
     }
 
     app_config->auto_rotate_enabled = FALSE;
-    printf("Auto-rotate stopped\n");
 
     // Save configuration
     char *config_path = config_get_config_path();
@@ -467,8 +494,6 @@ static void stop_auto_rotate(void) {
 }
 
 static gboolean auto_rotate_timer_callback(gpointer data) {
-    printf("Auto-rotate timer triggered - changing wallpaper\n");
-
     // Set random wallpaper
     set_random_wallpaper_callback(NULL, NULL);
 
@@ -821,7 +846,7 @@ static int set_kde_wallpaper_desktop(const char *image_path, int desktop_index) 
         // Set wallpaper for all desktops (default behavior)
         char command[1024];
         snprintf(command, sizeof(command),
-                 "plasma-apply-wallpaperimage '%s' 2>/dev/null",
+                 "plasma-apply-wallpaperimage '%s' >/dev/null 2>&1",
                  image_path);
 
         if (log_file) {
@@ -848,7 +873,7 @@ static int set_kde_wallpaper_desktop(const char *image_path, int desktop_index) 
                  "  desktop.wallpaperPlugin = \"org.kde.image\";"
                  "  desktop.currentConfigGroup = [\"Wallpaper\", \"org.kde.image\", \"General\"];"
                  "  desktop.writeConfig(\"Image\", \"file://%s\");"
-                 "}' 2>/dev/null",
+                 "}' >/dev/null 2>&1",
                  desktop_index, desktop_index, image_path);
 
         if (log_file) {
@@ -869,7 +894,7 @@ static int set_kde_wallpaper_desktop(const char *image_path, int desktop_index) 
 
             char fallback_command[1024];
             snprintf(fallback_command, sizeof(fallback_command),
-                     "plasma-apply-wallpaperimage '%s' 2>/dev/null",
+                     "plasma-apply-wallpaperimage '%s' >/dev/null 2>&1",
                      image_path);
 
             if (log_file) {
@@ -921,13 +946,11 @@ static void install_default_wallpapers(void) {
 
     // Check if default wallpapers exist
     if (!g_file_test(default_wallpaper_dir, G_FILE_TEST_IS_DIR)) {
-        fprintf(stderr, "Default wallpaper directory not found: %s\n", default_wallpaper_dir);
         return;
     }
 
     // Create user directory if needed
     if (g_mkdir_with_parents(user_wallpaper_dir, 0755) != 0) {
-        fprintf(stderr, "Failed to create wallpaper directory: %s\n", user_wallpaper_dir);
         return;
     }
 
@@ -945,11 +968,9 @@ static void install_default_wallpapers(void) {
 
             // Only copy if destination doesn't exist
             if (!g_file_test(dst_path, G_FILE_TEST_EXISTS)) {
-                if (g_file_copy(g_file_new_for_path(src_path),
-                               g_file_new_for_path(dst_path),
-                               G_FILE_COPY_NONE, NULL, NULL, NULL, NULL)) {
-                    fprintf(stderr, "Installed default wallpaper: %s\n", ent->d_name);
-                }
+                g_file_copy(g_file_new_for_path(src_path),
+                           g_file_new_for_path(dst_path),
+                           G_FILE_COPY_NONE, NULL, NULL, NULL, NULL);
             }
         }
     }
@@ -971,6 +992,101 @@ static void toggle_default_wallpapers_callback(GtkMenuItem *menuitem, gpointer u
     char *config_path = config_get_config_path();
     config_save(app_config, config_path);
     g_free(config_path);
+}
+
+// Toggle boot screen callback
+static void toggle_boot_screen_callback(GtkMenuItem *menuitem, gpointer userdata) {
+    if (!app_config) return;
+    app_config->boot_screen_enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuitem));
+
+    // Save config
+    char *config_path = config_get_config_path();
+    config_save(app_config, config_path);
+    g_free(config_path);
+}
+
+// Set boot screen to random callback
+static void set_boot_screen_random_callback(GtkMenuItem *menuitem, gpointer userdata) {
+    if (!app_config) return;
+
+    // Set to random mode (NULL means random)
+    g_free(app_config->boot_screen_image);
+    app_config->boot_screen_image = NULL;
+
+    // Save config
+    char *config_path = config_get_config_path();
+    config_save(app_config, config_path);
+    g_free(config_path);
+
+    // Show confirmation
+    GtkWidget *dialog = gtk_message_dialog_new(NULL,
+                                               GTK_DIALOG_MODAL,
+                                               GTK_MESSAGE_INFO,
+                                               GTK_BUTTONS_OK,
+                                               "Boot screen set to random wallpaper mode.\n\nThe wallpaper will be randomly selected from your collection on system startup.");
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+}
+
+// Set boot screen to selected callback
+static void set_boot_screen_selected_callback(GtkMenuItem *menuitem, gpointer userdata) {
+    if (!app_config) return;
+
+    // Create file chooser dialog
+    GtkWidget *dialog = gtk_file_chooser_dialog_new("Select Boot Screen Wallpaper",
+                                                    NULL,
+                                                    GTK_FILE_CHOOSER_ACTION_OPEN,
+                                                    "_Cancel", GTK_RESPONSE_CANCEL,
+                                                    "_Select", GTK_RESPONSE_ACCEPT,
+                                                    NULL);
+
+    // Add image filters
+    GtkFileFilter *filter = gtk_file_filter_new();
+    gtk_file_filter_set_name(filter, "Image files");
+    gtk_file_filter_add_pattern(filter, "*.jpg");
+    gtk_file_filter_add_pattern(filter, "*.jpeg");
+    gtk_file_filter_add_pattern(filter, "*.png");
+    gtk_file_filter_add_pattern(filter, "*.bmp");
+    gtk_file_filter_add_pattern(filter, "*.gif");
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+
+    // Set default directory
+    const char *default_dir = app_config ? app_config->wallpaper_directory : NULL;
+    if (!default_dir) {
+        char *fallback_dir = get_default_wallpaper_directory();
+        gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), fallback_dir);
+        free(fallback_dir);
+    } else {
+        gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), default_dir);
+    }
+
+    // Run dialog
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        char *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+        if (filename) {
+            // Set selected wallpaper for boot screen
+            g_free(app_config->boot_screen_image);
+            app_config->boot_screen_image = g_strdup(filename);
+
+            // Save config
+            char *config_path = config_get_config_path();
+            config_save(app_config, config_path);
+            g_free(config_path);
+
+            // Show confirmation
+            GtkWidget *msg_dialog = gtk_message_dialog_new(NULL,
+                                                           GTK_DIALOG_MODAL,
+                                                           GTK_MESSAGE_INFO,
+                                                           GTK_BUTTONS_OK,
+                                                           "Boot screen wallpaper set to:\n%s\n\nThis wallpaper will be used on system startup.", filename);
+            gtk_dialog_run(GTK_DIALOG(msg_dialog));
+            gtk_widget_destroy(msg_dialog);
+
+            g_free(filename);
+        }
+    }
+
+    gtk_widget_destroy(dialog);
 }
 
 // Show configuration dialog

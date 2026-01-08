@@ -1,0 +1,28 @@
+name: dpaper
+version: '1.0'
+summary: Dynamic wallpaper changer for KDE Plasma
+description: |
+  A C-based application for dynamically changing KDE Plasma desktop wallpapers
+  with a system tray icon interface. Features include:
+  - Random wallpaper selection
+  - Find and remove photos
+  - 34 bundled default wallpapers
+  - Auto-rotate with configurable interval
+  - Per-desktop or all-desktops wallpaper setting
+architectures:
+- amd64
+base: core22
+apps:
+  dpaper:
+    command: usr/local/bin/dpaper
+    plugs:
+    - desktop
+    - desktop-legacy
+    - wayland
+    - x11
+    - home
+confinement: strict
+grade: stable
+environment:
+  LD_LIBRARY_PATH: ${SNAP_LIBRARY_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}:$SNAP/usr/lib:$SNAP/usr/lib/x86_64-linux-gnu
+  PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
